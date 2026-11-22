@@ -1,145 +1,122 @@
-from flask import Flask, request, redirect
-import os
-import sqlite3
+    from flask import Flask, request, redirect, render_template_string
+import json, os
+
 app = Flask(__name__)
+FILE = "workers.json"
 
-def db():
-    conn = sqlite3.connect("kaamwala.db")
-    conn.execute("CREATE TABLE IF NOT EXISTS bookings (name TEXT, phone TEXT, kaam TEXT)")
-    conn.execute("CREATE TABLE IF NOT EXISTS workers (name TEXT, phone TEXT, kaam TEXT, price TEXT)")
-    return conn
+def load_workers():
+    if os.path.exists(FILE):
+        try:
+            with open(FILE) as f:
+                return json.load(f)
+        except:
+            return []
+    # Default workers
+    return [
+        {"name": "Raju Kumar", "work": "Electrician", "area": "Delhi", "price": "200", "phone": "9876543210"},
+        {"name": "Amit Sharma", "work": "Plumber", "area": "Delhi", "price": "250", "phone": "9876543211"},
+        {"name": "Vikash Yadav", "work": "Painter", "area": "Delhi", "price": "300", "phone": "9876543212"},
+    ]
 
-STYLE = """
+def save_workers(workers):
+    with open(FILE, "w") as f:
+        json.dump(workers, f)
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAAMWALA - Kaam Wala Bhai</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
-body{background:#f2f4f8;padding:15px}
-.header{background:linear-gradient(135deg,#ff6b00,#ff9a00);color:white;padding:25px 20px;border-radius:20px;text-align:center;margin-bottom:20px}
-.header h1{font-size:28px}
-.header p{opacity:0.9;margin-top:5px;font-size:14px}
-.header-dark{background:linear-gradient(135deg,#1e1e2e,#3a3a5c)}
-.card{background:white;padding:20px;border-radius:18px;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin-bottom:15px}
-.card h2{font-size:20px;margin-bottom:15px}
-label{font-size:13px;color:#666;font-weight:bold}
-input,select{width:100%;padding:13px;border:1px solid #ddd;border-radius:12px;margin:6px 0 14px 0;font-size:15px;background:#f9f9f9}
-.btn{width:100%;background:#ff6b00;color:white;border:none;padding:15px;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer}
-.btn-green{background:#00b894}
-.link{display:block;text-align:center;margin-top:15px;color:#ff6b00;font-weight:bold;text-decoration:none}
-.services{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
-.service{background:white;padding:18px 10px;border-radius:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.service span{font-size:30px}
-.service b{display:block;margin-top:8px;font-size:14px}
-.service small{color:#888}
-.worker-card{background:white;padding:16px;border-radius:16px;display:flex;align-items:center;gap:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.avatar{width:50px;height:50px;background:#ffe0c7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
-.price{margin-left:auto;background:#e8fff3;color:#00b894;padding:6px 10px;border-radius:20px;font-weight:bold;font-size:14px}
-.success{text-align:center;padding:40px 20px}
-.success h1{font-size:50px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
-.stat{background:white;padding:20px;border-radius:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.stat h1{font-size:32px;color:#ff6b00}
-.stat p{color:#888;font-size:13px;margin-top:5px}
-.booking-card{background:white;padding:16px;border-radius:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #ff6b00}
-.tag{background:#fff0e0;color:#ff6b00;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold}
-.call-btn{display:inline-block;background:#00b894;color:white;padding:8px 14px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:bold;margin-top:8px}
-.del-btn{display:inline-block;background:#ff4757;color:white;padding:8px 14px;border-radius:20px;text-decoration:none;font-size:13px;font-weight:bold;margin-top:8px;margin-left:5px}
+body{font-family:Arial;background:#f5f5f5;margin:0;padding:0}
+.header{background:#111;color:white;text-align:center;padding:25px 10px}
+.header h1{margin:0;font-size:32px;letter-spacing:2px}
+.header p{margin:5px;color:#ccc}
+.thanks{background:#ffe0ec;color:#d81b60;text-align:center;padding:15px;margin:15px;border-radius:15px;border:2px solid #ff8fab}
+.thanks h2{margin:0;font-size:22px}
+.thanks p{margin:5px;font-style:italic}
+.btns{display:flex;gap:10px;justify-content:center;padding:0 15px}
+.btn{flex:1;text-align:center;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;color:white}
+.join{background:#ff4757}
+.book-top{background:#2ed573}
+.card{background:white;margin:15px;padding:15px;border-radius:15px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+.card h3{margin:0}
+.badge{background:#eee;padding:4px 10px;border-radius:20px;font-size:12px}
+.price{font-size:20px;font-weight:bold;color:green}
+.wbtn{display:block;background:#25D366;color:white;text-align:center;padding:12px;border-radius:10px;text-decoration:none;font-weight:bold;margin-top:10px}
+.form input,.form select{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}
+.form button{width:100%;padding:14px;background:#111;color:white;border:none;border-radius:10px;font-weight:bold;font-size:16px}
 </style>
+</head>
+<body>
+<div class="header">
+<h1>KAAMWALA</h1>
+<p>Kaam Wala Bhai - Har Kaam Ke Liye</p>
+</div>
+
+<div class="thanks">
+<h2>Special Thanks to Mohini ❤️</h2>
+<p>Is website ke peeche sabse badi inspiration</p>
+</div>
+
+<div class="btns">
+<a class="btn join" href="/join">+ Worker Bano</a>
+<a class="btn book-top" href="#workers">Worker Dekho 👇</a>
+</div>
+
+<div id="workers">
+{% for w in workers %}
+<div class="card">
+<h3>{{ w.name }} <span class="badge">{{ w.work }}</span></h3>
+<p>📍 {{ w.area }} | 📞 {{ w.phone }}</p>
+<p class="price">₹{{ w.price }} / visit</p>
+<a class="wbtn" href="https://wa.me/91{{ w.phone }}?text=Hi%20{{ w.name }}%2C%20mujhe%20{{ w.work }}%20ka%20kaam%20karwana%20hai%20-%20KAAMWALA%20se" target="_blank">📱 WhatsApp Pe Book Karo</a>
+</div>
+{% endfor %}
+</div>
+
+<p style="text-align:center;color:#888;padding:20px">Made with ❤️ | KAAMWALA</p>
+</body>
+</html>
 """
 
-@app.route("/", methods=["GET", "POST"])
+JOIN_HTML = """
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Worker Bano</title>
+<style>body{font-family:Arial;background:#f5f5f5;padding:15px}.box{background:white;padding:20px;border-radius:15px}input,select{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}button{width:100%;padding:14px;background:#ff4757;color:white;border:none;border-radius:10px;font-weight:bold;font-size:16px}a{display:block;text-align:center;margin-top:15px}</style>
+</head><body><div class="box">
+<h2>👷 Worker Bano - KAAMWALA</h2>
+<form method="POST">
+<input name="name" placeholder="Apna Naam" required>
+<select name="work" required><option value="">Kaam Chune</option><option>Electrician</option><option>Plumber</option><option>Painter</option><option>Carpenter</option><option>AC Technician</option><option>Cleaner</option><option>Driver</option><option>Mason</option></select>
+<input name="area" placeholder="Area / City - jaise Delhi" required>
+<input name="price" placeholder="Price - jaise 200" required>
+<input name="phone" placeholder="WhatsApp Number - 10 digit" required>
+<button type="submit">Join Karo ✅</button>
+</form>
+<a href="/">← Wapas Homepage Pe</a>
+</div></body></html>
+"""
+
+@app.route("/")
 def home():
+    return render_template_string(HTML, workers=load_workers())
+
+@app.route("/join", methods=["GET","POST"])
+def join():
     if request.method == "POST":
-        conn = db()
-        conn.execute("INSERT INTO bookings VALUES (?,?,?)", (request.form["name"], request.form["phone"], request.form["kaam"]))
-        conn.commit()
-        return STYLE + """<div class="card success"><h1>✅</h1><br><h2>Booking Ho Gayi!</h2><p>Worker jald hi contact karega.</p><br><a class="btn" href="/" style="text-decoration:none;display:block">Wapas Jao</a></div>"""
-    return STYLE + """
-    <div class="header"><h1>KAAMWALA 🔧</h1><p>Ghar ka har kaam, ek click me</p></div>
-    <div style="text-align:center;background:#fff0f5;padding:18px 10px;border-radius:16px;margin:15px 0px;border:2px solid #ff8fab;">
-<h2 style="color:#d6336c;font-size:26px;margin:0px;">Special Thanks to Mohini ❤️</h2>
-<p style="color:#555;font-size:15px;margin:5px 0px 0px 0px;">Is website ke peeche sabse badi inspiration</p>
-</div>
-    <div class="services">
-        <div class="service"><span>🔧</span><b>Plumber</b><small>Rs 199 se</small></div>
-        <div class="service"><span>⚡</span><b>Electrician</b><small>Rs 149 se</small></div>
-        <div class="service"><span>❄️</span><b>AC Wala</b><small>Rs 499 se</small></div>
-        <div class="service"><span>🎨</span><b>Painter</b><small>Rs 999 se</small></div>
-    </div>
-    <div class="card"><h2>Booking Karo 📅</h2>
-    <form method="POST">
-        <label>TUMHARA NAAM</label><input name="name" placeholder="Ex: Rahul Sharma" required>
-        <label>PHONE NUMBER</label><input name="phone" placeholder="98765 43210" required>
-        <label>KAUNSA KAAM CHAHIYE?</label>
-        <select name="kaam"><option>Plumber</option><option>Electrician</option><option>AC Wala</option><option>Painter</option></select>
-        <button class="btn">BOOK KARO →</button>
-    </form></div>
-    <a class="link" href="/workers">👷 Workers Dekho</a>
-    <a class="link" href="/worker">Worker ho? Yaha Register Karo →</a>
-    """
-
-@app.route("/worker", methods=["GET", "POST"])
-def worker():
-    if request.method == "POST":
-        conn = db()
-        conn.execute("INSERT INTO workers VALUES (?,?,?,?)", (request.form["name"], request.form["phone"], request.form["kaam"], request.form["price"]))
-        conn.commit()
-        return STYLE + """<div class="card success"><h1>🎉</h1><br><h2>Welcome to KaamWala!</h2><p>Tum register ho gaye ho.</p><br><a class="btn btn-green" href="/workers" style="text-decoration:none;display:block">Workers List Dekho</a></div>"""
-    return STYLE + """
-    <div class="header"><h1>Worker Bano 👷</h1><p>Roz kaam pao, paisa kamao</p></div>
-    <div class="card"><h2>Register Karo</h2>
-    <form method="POST">
-        <label>TUMHARA NAAM</label><input name="name" placeholder="Ex: Ramesh Kumar" required>
-        <label>PHONE NUMBER</label><input name="phone" placeholder="98765 43210" required>
-        <label>TUM KYA KAAM KARTE HO?</label>
-        <select name="kaam"><option>Plumber</option><option>Electrician</option><option>AC Wala</option><option>Painter</option></select>
-        <label>TUMHARI FEES (Rs)</label><input name="price" placeholder="Ex: 300" required>
-        <button class="btn btn-green">REGISTER KARO →</button>
-    </form></div>
-    <a class="link" href="/">← Home Jao</a>
-    """
-
-@app.route("/workers")
-def workers():
-    conn = db()
-    rows = conn.execute("SELECT * FROM workers").fetchall()
-    html = STYLE + """<div class="header"><h1>Hamare Workers 👷</h1><p>Verified & Trusted</p></div>"""
-    emojis = {"Plumber":"🔧","Electrician":"⚡","AC Wala":"❄️","Painter":"🎨"}
-    for r in rows:
-        e = emojis.get(r[2],"🔧")
-        html += f"""<div class="worker-card"><div class="avatar">{e}</div><div><b>{r[0]}</b><br><small>{r[2]} • 📞 {r[1]}</small></div><div class="price">Rs {r[3]}</div></div>"""
-    if not rows:
-        html += "<div class='card'><p>Abhi koi worker nahi hai.</p></div>"
-    html += "<a class='link' href='/'>← Home Jao</a>"
-    return html
-
-@app.route("/admin")
-def admin():
-    conn = db()
-    bookings = conn.execute("SELECT rowid, * FROM bookings").fetchall()
-    workers_list = conn.execute("SELECT * FROM workers").fetchall()
-    html = STYLE + """
-    <div class="header header-dark"><h1>ADMIN DASHBOARD 👑</h1><p>KaamWala Boss View</p></div>
-    <div class="stats">
-        <div class="stat"><h1>""" + str(len(bookings)) + """</h1><p>Total Bookings</p></div>
-        <div class="stat"><h1>""" + str(len(workers_list)) + """</h1><p>Total Workers</p></div>
-    </div>
-    <div class="card"><h2>📅 Nayi Bookings</h2></div>
-    """
-    if not bookings:
-        html += "<div class='card'><p>Abhi koi booking nahi aayi.</p></div>"
-    for b in reversed(bookings):
-        html += f"""<div class="booking-card"><b>{b[1]}</b> <span class="tag">{b[3]}</span><br><small>📞 {b[2]}</small><br><a class="call-btn" href="tel:{b[2]}">📞 Call Karo</a> <a class="del-btn" href="/delete/{b[0]}">🗑️ Delete</a></div>"""
-    html += """<div class="card"><h2>👷 Sab Workers</h2></div>"""
-    for w in workers_list:
-        html += f"""<div class="worker-card"><div class="avatar">👷</div><div><b>{w[0]}</b><br><small>{w[2]} • 📞 {w[1]}</small></div><div class="price">Rs {w[3]}</div></div>"""
-    html += "<a class='link' href='/'>← Home Jao</a>"
-    return html
-
-@app.route("/delete/<int:bid>")
-def delete_booking(bid):
-    conn = db()
-    conn.execute("DELETE FROM bookings WHERE rowid=?", (bid,))
-    conn.commit()
-    return redirect("/admin")
+        workers = load_workers()
+        workers.append({
+            "name": request.form["name"],
+            "work": request.form["work"],
+            "area": request.form["area"],
+            "price": request.form["price"],
+            "phone": request.form["phone"]
+        })
+        save_workers(workers)
+        return redirect("/")
+    return JOIN_HTML
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=10000)
