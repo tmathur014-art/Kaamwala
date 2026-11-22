@@ -54,6 +54,10 @@ def home():
         return STYLE + """<div class="card success"><h1>✅</h1><br><h2>Booking Ho Gayi!</h2><p>Worker jald hi contact karega.</p><br><a class="btn" href="/" style="text-decoration:none;display:block">Wapas Jao</a></div>"""
     return STYLE + """
     <div class="header"><h1>KAAMWALA 🔧</h1><p>Ghar ka har kaam, ek click me</p></div>
+    <div style="text-align:center;background:#fff0f5;padding:18px 10px;border-radius:16px;margin:15px 0px;border:2px solid #ff8fab;">
+<h2 style="color:#d6336c;font-size:26px;margin:0px;">Special Thanks to Mohini ❤️</h2>
+<p style="color:#555;font-size:15px;margin:5px 0px 0px 0px;">Is website ke peeche sabse badi inspiration</p>
+</div>
     <div class="services">
         <div class="service"><span>🔧</span><b>Plumber</b><small>Rs 199 se</small></div>
         <div class="service"><span>⚡</span><b>Electrician</b><small>Rs 149 se</small></div>
